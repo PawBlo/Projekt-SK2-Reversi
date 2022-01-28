@@ -273,22 +273,30 @@ class Board
 
 void send(int player, char* msg, int size)
 {
-    int w=write(player,msg,size);
-    if(w<=0 || w==EPIPE)
-    {
-        throw player;
-    }
+    int count_bytes=0;
+	while(count_bytes<size)
+	{
+        int w=write(player,msg,size);
+		if(w<=0)
+		{
+			throw player;
+		}
+		count_bytes+=w;
+	}
 }
 char * my_read(int player, int size)
 {
     char* buffor= new char[size];
-    int r=read(player,buffor,size);
-    if(r<=0)
-    {
-        close(player);
-        throw player;
-    }
-
+	int count_bytes=0;
+	while(count_bytes<size)
+	{
+		int r=read(player,buffor+count_bytes,size-count_bytes);
+		if(r<=0)
+		{
+			throw player;
+		}
+		count_bytes+=r;
+	}
     return buffor;
 }
 
@@ -440,7 +448,6 @@ int main(int argc, char* argv[])
     act.sa_handler=SIG_IGN;
     if(sigaction(SIGPIPE,&act,NULL))
     {
-        perror("sigaction");
         exit(1);
     }
     while(true)
@@ -452,22 +459,19 @@ int main(int argc, char* argv[])
         int nSocket, nClientSocket;
         socklen_t nTmp;
         struct sockaddr_in stAddr, stClientAddr;
-        /* address structure */
         memset(&stAddr, 0, sizeof(struct sockaddr));
         stAddr.sin_family = AF_INET;
         stAddr.sin_addr.s_addr = htonl(INADDR_ANY);
         stAddr.sin_port = htons(SERVER_PORT); 
-        /* create a socket */
         nSocket = socket(AF_INET, SOCK_STREAM, 0);
         if (nSocket < 0)
         {
-            fprintf(stderr, "%s: Can't create a socket.\n", argv[0]);
             exit(1);
         }
         int nBind = bind(nSocket, (struct sockaddr*)&stAddr, sizeof(struct sockaddr));
-        if ( nBind<0)
+        if (nBind<0)
         {
-        exit(1);
+            exit(1);
         }
         int nListen = listen(nSocket, QUEUE_SIZE);    
     

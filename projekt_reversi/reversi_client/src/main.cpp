@@ -138,19 +138,24 @@ class BSDsocket
 	char* bsd_read(int size)
 	{
 		char* buffor= new char[size];
-		int r=read(sck,buffor,size);
-		if(r<=0)
+		int count_bytes=0;
+		while(count_bytes<size)
 		{
-			if(r==-1)
+			int r=read(sck,buffor+count_bytes,size-count_bytes);
+			if(r<=0)
 			{
-				throw (std::string) "Connection error. \nTry again later";
+				if(r<0)
+				{
+					throw (std::string) "Connection error. \nTry again later";
+				}
+				if(r==0)
+				{
+					throw (std::string) "Server connection error. \nThe game ended in the draw.";
+				}
 			}
-			if(r==0)
-			{
-				throw (std::string) "Server connection error. \nThe game ended in the draw.";
-			}
+			count_bytes+=r;
 		}
-		for(int i=0;i<r;i++)
+		for(int i=0;i<count_bytes;i++)
 		{
 			if(buffor[i]=='c')
 			{
@@ -161,20 +166,16 @@ class BSDsocket
 	}
 	void bsd_write(int size, char* msg)
 	{
-		int count=0;
-		std::string tmpp=std::string(msg,size);
-		int w=write(sck,msg,size);
-		int tmp=0;
-		tmp+=w;
-		while(tmp<size)
+		int count_bytes=0;
+		while(count_bytes<size)
 		{
-			count++;
-			if(w==-1)
+			int w=write(sck,msg+count_bytes,size-count_bytes);
+			if(w<0)
 			{
 				close(sck);
 				throw (std::string)"Connection error";
 			}
-			w=write(sck,msg+tmp,size-tmp);
+			count_bytes+=w;
 		}
 	}
 	void my_close()
@@ -411,7 +412,6 @@ class Game {
 		turn_text.setCharacterSize(30);
 		turn_text.setFillColor(sf::Color::White);
 		window.draw(turn_text);		
-		window.display();
 	}
 	void draw_end_game()
 	{
